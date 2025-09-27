@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("@nomicfoundation/hardhat-verify");
 require("dotenv").config();
 
 
@@ -18,7 +19,7 @@ module.exports = {
     },
     celoSepolia: {
       chainId: 11142220,
-      url: CELO_SEP_RPC,
+      url: CELO_SEP_RPC, // e.g. from Alchemy/QuickNode/thirdweb
       accounts: PVT_KEY ? [PVT_KEY] : [],
     },
 
