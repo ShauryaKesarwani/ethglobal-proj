@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 // --- FILL THESE ---
 const IS_TESTNET = true; // false for mainnet
-const CONTRACT_ADDRESS = "0x799dE61C8AB35296248EeA02e904E213E11dbd33"; // LOWERCASE!
+const CONTRACT_ADDRESS = "0x04e445ca1B939Ab0fB1976fdE4CbfFF1e31A9189"; // LOWERCASE!
 const SCOPE_SEED = "eclairs-seed"; // EXACT scopeSeed used at deploy
 const APP_NAME = "Eclairs";
 const LOGO_URL = "https://i.postimg.cc/mrmVf9hm/self.png";

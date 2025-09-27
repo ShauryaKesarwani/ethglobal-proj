@@ -7,7 +7,7 @@ import {SelfStructs} from "@selfxyz/contracts/contracts/libraries/SelfStructs.so
 import {SelfUtils} from "@selfxyz/contracts/contracts/libraries/SelfUtils.sol";
 import {IIdentityVerificationHubV2} from "@selfxyz/contracts/contracts/interfaces/IIdentityVerificationHubV2.sol";
 
-import "./SessionManager.sol";
+//import "./SessionManager.sol";
 
 
 contract ACGC is SelfVerificationRoot {
@@ -17,7 +17,7 @@ contract ACGC is SelfVerificationRoot {
     SelfStructs.VerificationConfigV2 public verificationConfig;
     bytes32 public verificationConfigId;
 
-    SessionManager public session;
+//    SessionManager public session;
 
     event NullifierIssued(uint256 nullifier);
     event CheaterFlagged(uint256 nullifier);
@@ -40,8 +40,8 @@ contract ACGC is SelfVerificationRoot {
         verificationConfigId = IIdentityVerificationHubV2(hubV2).setVerificationConfigV2(verificationConfig);
 
         // Deploy SessionManager and keep its address
-        session = new SessionManager(address(this));
-        emit SessionDeployed(address(session));
+//        session = new SessionManager(address(this));
+//        emit SessionDeployed(address(session));
     }
 
     // emit nullifier + auto-open session
@@ -58,11 +58,11 @@ contract ACGC is SelfVerificationRoot {
          require(!isBanned[nullifier], "banned");
 
         // Auto-open a 3h session; never revert verification if this fails
-        try session.openSession(nullifier) {
-            emit SessionAutoOpened(nullifier, true);
-        } catch {
-            emit SessionAutoOpened(nullifier, false);
-        }
+//        try session.openSession(nullifier) {
+//            emit SessionAutoOpened(nullifier, true);
+//        } catch {
+//            emit SessionAutoOpened(nullifier, false);
+//        }
     }
 
     // Hub routing
@@ -88,7 +88,4 @@ contract ACGC is SelfVerificationRoot {
         return !isBanned[nullifier];
     }
 
-    function getSessionStatus(uint256 nullifier) external view returns (bool active, uint64 expiresAt) {
-        return session.isActive(nullifier);
-    }
 }
