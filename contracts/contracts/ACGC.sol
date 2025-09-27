@@ -87,4 +87,8 @@ contract ACGC is SelfVerificationRoot {
     function isAllowed(uint256 nullifier) external view returns (bool) {
         return !isBanned[nullifier];
     }
+
+    function getSessionStatus(uint256 nullifier) external view returns (bool active, uint64 expiresAt) {
+        return session.isActive(nullifier);
+    }
 }
