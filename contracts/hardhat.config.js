@@ -2,23 +2,23 @@ require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
 
-const { ALCHEMY_RPC_URL, PVT_KEY, ETHERSCAN_API_KEY } = process.env;
+const { CELO_SEP_RPC, PVT_KEY, ETHERSCAN_API_KEY, SEP_ALCHEMY_RPC } = process.env;
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.20",
+  solidity: "0.8.28",
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      forking: { url: ALCHEMY_RPC_URL },
+      forking: { url: CELO_SEP_RPC },
     },
     sepolia: {
-      url: ALCHEMY_RPC_URL, // or Infura RPCnpm i
+      url: SEP_ALCHEMY_RPC, // or Infura RPCnpm i
       accounts: PVT_KEY ? [PVT_KEY] : [],
     },
     celoSepolia: {
       chainId: 11142220,
-      url: ALCHEMY_RPC_URL, // e.g. from Alchemy/QuickNode/thirdweb
+      url: CELO_SEP_RPC,
       accounts: PVT_KEY ? [PVT_KEY] : [],
     },
 
