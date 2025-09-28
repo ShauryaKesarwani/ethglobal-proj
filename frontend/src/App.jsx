@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Dashboard from './Dashboard';
 import Login from './Login';
 import Admin from './Admin';
+import StakeAndSteal from './SplitAndSteal';
 import './App.css';
 
 function App() {
@@ -67,6 +68,7 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/split" element={<StakeAndSteal />} />
       </Routes>
     </Router>
   );
