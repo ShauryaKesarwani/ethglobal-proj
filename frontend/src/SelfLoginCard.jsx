@@ -149,7 +149,21 @@ export default function SelfLoginCard() {
                     // listen once for NullifierIssued after verification
                     acgc.once("UserNameDisclosed", (nullifier, fullName) => {
                       console.log("✅ Verified user:", fullName, "nullifier:", nullifier.toString());
-                      localStorage.setItem(nullifier.toString(), fullName);
+                      
+                      // Store user data with timestamp
+                      const userData = {
+                        name: fullName,
+                        timestamp: Date.now()
+                      };
+                      localStorage.setItem(nullifier.toString(), JSON.stringify(userData));
+                      localStorage.setItem('currentUser', JSON.stringify(userData));
+                      
+                      // Set timeout to delete after 3 hours (3 * 60 * 60 * 1000 ms)
+                      setTimeout(() => {
+                        localStorage.removeItem(nullifier.toString());
+                        localStorage.removeItem('currentUser');
+                        console.log("🕐 User session expired after 3 hours");
+                      }, 3 * 60 * 60 * 1000);
                     });
 
                   } catch (err) {
