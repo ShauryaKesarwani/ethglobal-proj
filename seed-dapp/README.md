@@ -1,210 +1,112 @@
-# 🎨 Seed-Art Generator
+🎨 Seed-Art Generator
 
-A Web3 + generative art application that creates unique, deterministic artwork from on-chain randomness using Pyth Network's entropy.
+Deterministic generative art powered by on-chain entropy.
 
-## 📝 Overview
+📝 What It Is
 
-This project demonstrates how to tie **on-chain random seeds** to **deterministic generative art**:
+This dApp binds Pyth Network entropy → BadgeSeed contract → p5.js art.
+A wallet click requests a seed on-chain; the same seed will always regenerate the same abstract art.
 
-1. **Connect to MetaMask** and call a deployed BadgeSeed smart contract
-2. **Request entropy seed** by paying the entropy fee to Pyth Network
-3. **Poll the contract** for `seedOfUser()` until a seed is assigned
-4. **Convert hex seed** to deterministic numeric seed
-5. **Generate art** using p5.js with the seeded randomness
-6. **Display canvas** live on the page - this canvas becomes the NFT art
+⚙️ Stack
 
-## 🔧 Tech Stack
+Smart Contract: BadgeSeed.sol (wraps Pyth Entropy V2)
 
-- **HTML/CSS/JS** - Single-page dApp
-- **ethers.js v5** - Web3 calls in browser
-- **p5.js** - Generative art framework
-- **MetaMask** - Wallet connection
-- **Pyth Network** - On-chain entropy/randomness
-- **BadgeSeed Contract** - Smart contract for seed management
+Frontend: HTML + CSS + Vanilla JS
 
-## 🗂️ File Structure
+Web3: ethers.js v5 + MetaMask
 
-```
-seed-dapp/
-├── index.html        # UI container with buttons and canvas
-├── style.css         # Dark theme styling
-├── app.js            # Web3 logic, wallet connect, contract interaction
-├── sketch.js         # p5.js generative art with deterministic seed
-└── README.md         # This file
-```
+Art: p5.js seeded randomness
 
-## 🚀 Quick Start
+Network: Base Sepolia (or any chain where Pyth Entropy V2 lives)
 
-### 1. Deploy BadgeSeed Contract
+📂 Structure
 
-First, you need to deploy the BadgeSeed contract:
+seed-art/
+├─ index.html      → UI + buttons + canvas
+├─ style.css       → minimal dark theme
+├─ app.js          → wallet connect & seed logic
+├─ sketch.js       → p5.js deterministic art
+└─ README.md
 
-```bash
-cd ../entropyseed
-npm install
-```
 
-Create a `.env` file with:
-```env
-ENTROPY_ADDRESS=0x...  # Pyth entropy contract address
-PROVIDER_ADDRESS=0x... # Pyth provider address
-PRIVATE_KEY=0x...      # Your private key
-```
+🚀 Quick-Start
+1 · Deploy BadgeSeed
 
-Deploy the contract:
-```bash
-npx hardhat run scripts/deploy.js --network <your-network>
-```
+git clone …/entropyseed
+cd entropyseed
+cp .env.example .env     # fill in:
+# ENTROPY_ADDRESS=<pyth entropy contract>
+# PROVIDER_ADDRESS=<pyth provider>
+# PVT_KEY=<deployer key>
+npx hardhat run scripts/deploy.js --network baseSepolia
 
-### 2. Update Contract Address
+2 · Wire Frontend
 
-In `app.js`, replace the placeholder address:
-```javascript
-const BADGESEED_ADDRESS = "0xYourDeployedContractAddress";
-```
+Edit app.js:
 
-### 3. Run the DApp
+const BADGESEED_ADDRESS = "0x<your-BadgeSeed-address>";
 
-```bash
-# Option 1: Using npx serve
+3 · Run Locally
+
 npx serve .
-
-# Option 2: Using Python
+#   – or –
 python3 -m http.server 8000
 
-# Option 3: Using Node.js
-npx http-server
-```
+Open http://localhost:3000 (or chosen port).
+🖥️ Flow
 
-Then open `http://localhost:3000` (or 8000) in your browser.
+    Connect Wallet → MetaMask popup → ethers.js provider+signer.
 
-## 🎯 How It Works
+    Request Seed → reads entropy.getFeeV2() → sends requestSeed() with fee.
 
-### 1. **Wallet Connection**
-- User clicks "Connect Wallet"
-- MetaMask prompts for account access
-- App initializes ethers.js provider and signer
+    Wait Callback → polls seedOfUser() every 2 s (120 × ≈4 min).
 
-### 2. **Seed Request**
-- User clicks "Request Seed & Generate Art"
-- App fetches entropy fee from Pyth Network
-- Sends `requestSeed()` transaction with fee
-- Waits for transaction confirmation
+    Seed → Art → converts hex→int:
 
-### 3. **Seed Polling**
-- Polls `seedOfUser(address)` every 2 seconds
-- Continues for up to 120 attempts (4 minutes)
-- Once seed is assigned, proceeds to art generation
+    parseInt(seed.slice(2,10),16)
 
-### 4. **Art Generation**
-- Converts hex seed to numeric seed: `parseInt(seed.slice(2,10), 16)`
-- Calls `window.generateArt(numericSeed)`
-- p5.js creates deterministic abstract art
-- Canvas is attached to `#canvas-container`
+    Render → window.generateArt(seedInt) in sketch.js.
 
-## 🎨 Art Generation
+🎨 Art
 
-The `sketch.js` file contains the generative art logic:
+    Deterministic: identical seed → identical art
 
-- **Deterministic**: Same seed always produces same art
-- **Abstract patterns**: 500 colorful ellipses with seeded randomness
-- **Gradient backgrounds**: Smooth color transitions
-- **Organic shapes**: Noise-based irregular forms
-- **Connecting lines**: Network-like connections between elements
+    Abstract / organic: ellipses + noise + gradients
 
-## 🔧 Smart Contract Interface
+    NFT-ready: canvas image is reproducible & verifiable on-chain
 
-The BadgeSeed contract provides:
+🔧 Contract API
 
-```solidity
-// Request entropy seed (payable)
-function requestSeed() external payable returns (uint64)
+function requestSeed() external payable returns(uint64);
+function seedOfUser(address) external view returns(bytes32);
+function entropy() external view returns(address);
 
-// Get user's assigned seed
-function seedOfUser(address) external view returns (bytes32)
+Emits:
 
-// Get entropy contract address
-function entropy() external view returns (address)
-```
+event SeedRequested(address player,uint64 reqId);
+event SeedAssigned(address player,uint64 reqId,bytes32 seed);
 
-## 🌐 Network Requirements
+🛠️ Troubleshooting
 
-- **MetaMask** installed and connected
-- **Testnet ETH** for transaction fees
-- **Same network** as deployed BadgeSeed contract
-- **Pyth Network** entropy available on the network
+    MetaMask not detected: install extension → refresh
 
-## 🎯 Use Cases
+    Wrong network: switch to Base Sepolia (0x14A34)
 
-- **NFT Art Generation**: Each seed creates unique, reproducible art
-- **Gaming**: Random loot, procedural content
-- **Lotteries**: Fair, verifiable randomness
-- **Research**: Deterministic but unpredictable patterns
+    NotEnoughFee: hold enough test-ETH to pay entropy fee
 
-## 🔍 Troubleshooting
+    Timeout: Pyth callback may lag; retry or inspect block explorer
 
-### Common Issues:
+    Canvas blank: check browser console that p5.js + seed conversion loaded
 
-1. **"MetaMask not detected"**
-   - Install MetaMask browser extension
-   - Refresh the page
+🤓 Dev Notes
 
-2. **"Connection failed"**
-   - Check MetaMask is unlocked
-   - Ensure you're on the correct network
+    Replace generateArt() in sketch.js to try new visual formulas.
 
-3. **"NotEnoughFee" error**
-   - Ensure you have enough ETH for the entropy fee
-   - Check the fee amount in the status message
+    Front-end expects any contract exposing the same three functions above.
 
-4. **"Failed to get seed"**
-   - Network might be slow
-   - Try again after a few minutes
-   - Check if Pyth Network is operational
+    Auto-reload on accountsChanged / chainChanged.
 
-5. **Art not generating**
-   - Check browser console for errors
-   - Ensure p5.js loaded correctly
-   - Verify seed conversion is working
+📜 License
 
-## 📚 Development
-
-### Adding New Art Patterns
-
-Modify `generateAbstractPattern()` in `sketch.js`:
-
-```javascript
-function generateAbstractPattern(p) {
-    // Your custom art generation logic here
-    // Use p.random() and p.noise() for seeded randomness
-}
-```
-
-### Customizing UI
-
-Edit `style.css` for different themes, or modify `index.html` for different layouts.
-
-### Contract Integration
-
-The app is designed to work with any entropy-based contract that provides:
-- `requestSeed()` payable function
-- `seedOfUser(address)` view function
-- Event emission for seed assignment
-
-## 🎉 Features
-
-- ✅ **MetaMask Integration** - Seamless wallet connection
-- ✅ **Real Entropy** - Uses Pyth Network for true randomness
-- ✅ **Deterministic Art** - Same seed = same artwork
-- ✅ **Responsive Design** - Works on mobile and desktop
-- ✅ **Error Handling** - Comprehensive status messages
-- ✅ **Canvas Management** - Proper cleanup and regeneration
-- ✅ **Event Listening** - Handles account/chain changes
-
-## 📄 License
-
-This project demonstrates Web3 + generative art integration. Feel free to use and modify for your own projects!
-
----
-
-**Built with ❤️ for the Web3 + Art community**
+MIT for demo code.
+Built at ETHGlobal — where sleep is optional, but good README is mandatory.
