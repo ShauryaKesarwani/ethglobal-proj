@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed-Art Generator - Test</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 Seed-Art Generator - Test Mode</h1>
+            <p>Test the art generation without Web3</p>
+        </header>
+
+        <div class="controls">
+            <button id="testBtn" class="btn btn-primary">Generate Test Art</button>
+        </div>
+
+        <div class="status">
+            <p id="status">Click "Generate Test Art" to test the p5.js art generation</p>
+        </div>
+
+        <div id="canvas-container">
+            <!-- p5.js canvas will be inserted here -->
+        </div>
+    </div>
+
+    <!-- Load external libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    
+    <!-- Load our scripts -->
+    <script src="sketch.js"></script>
+    
+    <script>
+        // Test script
+        document.getElementById('testBtn').onclick = function() {
+            const testSeed = Math.floor(Math.random() * 1000000);
+            document.getElementById('status').textContent = `Generating test art with seed: ${testSeed}`;
+            window.generateArt(testSeed);
+        };
+    </script>
+</body>
+</html>
