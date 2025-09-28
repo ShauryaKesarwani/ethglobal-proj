@@ -1,123 +1,135 @@
-// p5.js generative art sketch with deterministic seed
+// --- sketch.js (deterministic; 2x2 normal, 3x3 rare) ---
+
 let currentCanvas = null;
 
-// Global function to generate art with a specific seed
-window.generateArt = function(seed) {
-    // Remove existing canvas if any
-    if (currentCanvas) {
-        currentCanvas.remove();
-    }
-    
-    // Clear the container
-    const container = document.getElementById('canvas-container');
-    container.innerHTML = '';
-    
-    // Create new p5 instance with the seed
-    currentCanvas = new p5((p) => {
-        p.setup = function() {
-            const canvas = p.createCanvas(400, 400);
-            canvas.parent('canvas-container');
-            
-            // Set the seed for deterministic generation
-            p.randomSeed(seed);
-            p.noiseSeed(seed);
-            
-            // Generate the art
-            generateAbstractPattern(p);
-        };
-        
-        p.draw = function() {
-            // Static art - no animation needed
-            p.noLoop();
-        };
-    });
+// Adjust rarity here (e.g., 0.10 = 10% chance 3x3)
+const RARE_3x3_PROB = 0.12;
+
+// Call this from app.js with your seeded integer:
+//   window.generateArt(seedInt)
+window.generateArt = function (seed) {
+  if (currentCanvas) currentCanvas.remove();
+  const container = document.getElementById("canvas-container");
+  container.innerHTML = "";
+
+  currentCanvas = new p5((p) => {
+    // per-instance state
+    let x1, x2, y2, x3, y3, x4;
+    let grid; // 2 or 3
+    const range = 250; // color hue span
+
+    p.setup = function () {
+      // deterministic seeds
+      p.randomSeed(seed);
+      p.noiseSeed(seed);
+
+      // canvas
+      const maxSize = Math.min(window.innerWidth, window.innerHeight) - 20;
+      const c = p.createCanvas(maxSize, maxSize);
+      c.parent("canvas-container");
+
+      p.background(0);
+      p.angleMode(p.DEGREES);
+      p.colorMode(p.HSB, 360, 100, 100, 100);
+
+      // ----- rarity: 2x2 normal, 3x3 rare (deterministic) -----
+      // use the seeded PRNG so the rarity outcome is tied to seed
+      grid = p.random() < RARE_3x3_PROB ? 3 : 2;
+
+      const rMax = p.width / 2 / grid;
+
+      // ----- palette (deterministic) -----
+      const numColors = p.floor(p.random(4, 8));
+      const palette = [];
+      let col = p.random(360);
+      for (let q = 0; q < numColors - 1; q++) {
+        palette.push(col);
+        col = col + range / numColors;
+        if (col > 359) col = col - range;
+      }
+
+      // ----- tiles -----
+      for (let m = 0; m < grid; m++) {
+        for (let n = 0; n < grid; n++) {
+          p.push();
+
+          const petals = p.floor(p.random(8, 30 - grid));
+          const layers = p.floor(p.random(4, 35 - grid));
+          const ang = 360 / petals;
+
+          p.translate(
+            (p.width / grid) * m + p.width / grid / 2,
+            (p.height / grid) * n + p.height / grid / 2
+          );
+
+          // layers (outer -> inner)
+          for (let j = layers; j > 0; j--) {
+            const currR = (j / layers) * rMax;
+
+            x1 = p.random(0.35 * currR, 0.45 * currR);
+            x2 = p.random(0.5 * currR, 0.7 * currR);
+
+            const maxY2 = x2 * p.tan(ang) * 0.9;
+            y2 = p.random(0.06 * currR, Math.max(0.06 * currR, maxY2));
+
+            x3 = p.random(x2 * 1.1, 0.85 * currR);
+            const maxY3 = x3 * p.tan(ang) * 0.9;
+            y3 = p.random(0.06 * currR, Math.max(0.06 * currR, maxY3));
+
+            x4 = p.random(0.88 * currR, 0.99 * currR);
+
+            const hue = palette[p.floor(p.random(palette.length))];
+            p.fill(hue, 100, 100, 35);
+
+            // petals
+            for (let i = 0; i < petals; i++) {
+              p.noStroke();
+              p.beginShape();
+              p.curveVertex(x4, 0);
+              p.curveVertex(x4, 0);
+              p.curveVertex(x3, y3);
+              p.curveVertex(x2, y2);
+              p.curveVertex(x1, 0);
+              p.curveVertex(x2, -y2);
+              p.curveVertex(x3, -y3);
+              p.curveVertex(x4, 0);
+              p.curveVertex(x4, 0);
+              p.endShape();
+              p.rotate(ang);
+            }
+            p.rotate(ang / 2);
+          }
+
+          p.pop();
+        }
+      }
+
+      // Optional: show rarity badge in console
+      console.log(`Grid: ${grid}x${grid} (${grid === 3 ? "RARE" : "COMMON"})`);
+    };
+
+    // hotkeys: save & re-render same seed
+    p.keyTyped = function () {
+      if (p.key === "s") p.save("myCanvas.png");
+      if (p.key === "n") window.generateArt(seed);
+    };
+
+    // keep it crisp on resize; reflow to same seed
+    p.windowResized = function () {
+      const maxSize = Math.min(window.innerWidth, window.innerHeight) - 20;
+      p.resizeCanvas(maxSize, maxSize);
+      // re-instanting is safest for determinism; trigger same-seed rebuild:
+      window.generateArt(seed);
+    };
+  });
 };
 
-// Generate abstract pattern using the seeded random functions
-function generateAbstractPattern(p) {
-    // Set background with gradient
-    for (let i = 0; i <= p.height; i++) {
-        let inter = p.map(i, 0, p.height, 0, 1);
-        let c = p.lerpColor(p.color(20, 20, 40), p.color(40, 20, 60), inter);
-        p.stroke(c);
-        p.line(0, i, p.width, i);
-    }
-    
-    // Generate colorful ellipses with seeded randomness
-    p.noStroke();
-    
-    // Create 500 colorful ellipses
-    for (let i = 0; i < 500; i++) {
-        // Use seeded random for position
-        let x = p.random(p.width);
-        let y = p.random(p.height);
-        
-        // Use seeded random for size
-        let size = p.random(5, 50);
-        
-        // Use seeded random for color with some constraints
-        let hue = p.random(0, 360);
-        let saturation = p.random(60, 100);
-        let brightness = p.random(70, 100);
-        let alpha = p.random(100, 200);
-        
-        p.colorMode(p.HSB);
-        p.fill(hue, saturation, brightness, alpha);
-        
-        // Add some rotation for variety
-        p.push();
-        p.translate(x, y);
-        p.rotate(p.random(0, p.TWO_PI));
-        
-        // Draw ellipse with some randomness in shape
-        if (p.random() < 0.3) {
-            // Sometimes draw a rectangle instead
-            p.rect(-size/2, -size/2, size, size * p.random(0.5, 1.5));
-        } else {
-            p.ellipse(0, 0, size, size * p.random(0.5, 1.5));
-        }
-        p.pop();
-    }
-    
-    // Add some connecting lines for more complexity
-    p.strokeWeight(1);
-    p.colorMode(p.RGB);
-    
-    for (let i = 0; i < 50; i++) {
-        let x1 = p.random(p.width);
-        let y1 = p.random(p.height);
-        let x2 = p.random(p.width);
-        let y2 = p.random(p.height);
-        
-        let hue = p.random(0, 360);
-        p.colorMode(p.HSB);
-        p.stroke(hue, 80, 90, 50);
-        p.line(x1, y1, x2, y2);
-    }
-    
-    // Add some noise-based organic shapes
-    p.noStroke();
-    p.colorMode(p.HSB);
-    
-    for (let i = 0; i < 20; i++) {
-        let centerX = p.random(p.width);
-        let centerY = p.random(p.height);
-        let radius = p.random(30, 80);
-        
-        p.beginShape();
-        for (let angle = 0; angle < p.TWO_PI; angle += 0.1) {
-            let r = radius + p.noise(centerX * 0.01, centerY * 0.01, angle) * 20;
-            let x = centerX + p.cos(angle) * r;
-            let y = centerY + p.sin(angle) * r;
-            p.vertex(x, y);
-        }
-        p.endShape(p.CLOSE);
-        
-        // Fill with semi-transparent color
-        let hue = p.random(0, 360);
-        p.fill(hue, 60, 80, 30);
-    }
-    
-    // Reset color mode
-    p.colorMode(p.RGB);
-}
+// Optional: auto-demo if opened standalone (no web3/app.js)
+// if (!window.generateArtBootstrapped) {
+//   window.addEventListener("DOMContentLoaded", () => {
+//     if (!document.getElementById("canvas-container")) return;
+//     const demoSeed = Math.floor(Math.random() * 0x7fffffff);
+//     window.generateArt(demoSeed);
+//   });
+//   window.generateArtBootstrapped = true;
+// }
