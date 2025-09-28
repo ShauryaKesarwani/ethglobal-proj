@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
 
@@ -7,6 +7,51 @@ const Dashboard = () => {
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Check for existing wallet connection on component mount
+  useEffect(() => {
+    const checkExistingConnection = async () => {
+      const walletData = localStorage.getItem('walletConnection');
+      if (walletData) {
+        try {
+          const parsedData = JSON.parse(walletData);
+          const thirtyMinutesInMs = 30 * 60 * 1000;
+          
+          // Check if connection has expired (30 minutes)
+          if (Date.now() - parsedData.timestamp > thirtyMinutesInMs) {
+            localStorage.removeItem('walletConnection');
+            console.log('🕐 Wallet connection expired after 30 minutes');
+          } else {
+            // Restore connection
+            setAddress(parsedData.address);
+            
+            // Try to get current balance
+            try {
+              const provider = new ethers.BrowserProvider(window.ethereum);
+              const bal = await provider.getBalance(parsedData.address);
+              setBalance(ethers.formatEther(bal));
+            } catch {
+              console.log('Could not fetch balance');
+            }
+            
+            // Set timeout for remaining time
+            const remainingTime = thirtyMinutesInMs - (Date.now() - parsedData.timestamp);
+            setTimeout(() => {
+              localStorage.removeItem('walletConnection');
+              setAddress('');
+              setBalance(null);
+              console.log('🕐 Wallet connection expired after 30 minutes');
+            }, remainingTime);
+          }
+        } catch (error) {
+          console.error('Error parsing wallet data:', error);
+          localStorage.removeItem('walletConnection');
+        }
+      }
+    };
+    
+    checkExistingConnection();
+  }, []);
 
   // Celo Sepolia network details
   const CELO_SEPOLIA_NETWORK = {
@@ -56,6 +101,21 @@ const Dashboard = () => {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const bal = await provider.getBalance(selectedAddress);
       setBalance(ethers.formatEther(bal));
+      
+      // Store wallet connection with timestamp
+      const walletData = {
+        address: selectedAddress,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('walletConnection', JSON.stringify(walletData));
+      
+      // Set timeout to clear after 30 minutes
+      setTimeout(() => {
+        localStorage.removeItem('walletConnection');
+        setAddress('');
+        setBalance(null);
+        console.log('🕐 Wallet connection expired after 30 minutes');
+      }, 30 * 60 * 1000);
     } catch (e) {
       setError("Failed to connect or switch network");
       console.log(e);
@@ -77,29 +137,6 @@ const Dashboard = () => {
       setBalance(ethers.formatEther(bal));
     } catch (e) {
       setError("Failed to refresh balance");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Add to your component
-  const openLootbox = async () => {
-    try {
-      setLoading(true);
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-      
-      // Generate user random input
-      const userRandom = ethers.randomBytes(32);
-      
-      // Call lootbox function
-      const tx = await contract.openLootbox(userRandom);
-      await tx.wait();
-      
-      // Listen for NFT minted event or check balance
-    } catch (error) {
-      setError("Failed to open lootbox");
     } finally {
       setLoading(false);
     }
