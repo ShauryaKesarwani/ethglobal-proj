@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 
 // --- FILL THESE ---
 const IS_TESTNET = true; // false for mainnet
-const CONTRACT_ADDRESS = "0x04e445ca1B939Ab0fB1976fdE4CbfFF1e31A9189"; // LOWERCASE!
+const CONTRACT_ADDRESS = "0x5437410A2b3cd021b0ee5dA5BB8948Ffa3A0A61b"; // LOWERCASE!
 const SCOPE_SEED = "eclairs-seed"; // EXACT scopeSeed used at deploy
 const APP_NAME = "Eclairs";
 const LOGO_URL = "https://i.postimg.cc/mrmVf9hm/self.png";
 // -------------------
 
 const CELO_SEPOLIA = {
+
   chainId: "0xAA044C", // 11142220 (Celo Sepolia); keep this if you already use it
   chainName: "Celo Sepolia Testnet",
   nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
@@ -20,6 +21,7 @@ const CELO_SEPOLIA = {
 };
 
 export default function SelfLoginCard() {
+  let i = 1;
   const [selfApp, setSelfApp] = useState(null);
   const [showQR, setShowQR] = useState(false);
   const [err, setErr] = useState("");
@@ -75,6 +77,7 @@ export default function SelfLoginCard() {
       disclosures: {
         minimumAge: 0,                         // maps to olderThan
         excludedCountries: [],                 // maps to forbiddenCountries
+        name : true,
         ofac: false,                           // maps to ofacEnabled
         // DO NOT add nationality/gender/etc if not in config
       },
@@ -123,22 +126,46 @@ export default function SelfLoginCard() {
       {err ? <p className="mt-2 text-sm text-red-400">{err}</p> : null}
 
       {showQR && appPayload ? (
-        <div className="mt-6 rounded-xl border border-white/20 bg-white/50 p-4">
-          <SelfQRcodeWrapper
-            selfApp={appPayload}
-            onSuccess={() => {
-              console.log("[Self] Verified! (proof accepted + callback to contract)");
-              setShowQR(false);
-            }}
-            onError={(data) => {
-              console.error("[Self] Verification error:", data);
-              // If you see ScopeMismatch(), check scope, endpoint (lowercase), and disclosures.
-            }}
-          />
-          <p className="mt-3 text-xs text-white/70">
-            Scan with the Self app to verify on Celo {IS_TESTNET ? "Sepolia" : "mainnet"}.
-          </p>
-        </div>
+          <div className="mt-6 rounded-xl border border-white/20 bg-white/50 p-4">
+            <SelfQRcodeWrapper
+                selfApp={appPayload}
+                onSuccess={async () => {
+                  console.log("[Self] ✅ Verified! (proof accepted + callback to contract)");
+                  setShowQR(false);
+
+                  try {
+                    // connect to ACGC contract
+                    const provider = new ethers.BrowserProvider(window.ethereum);
+                    const signer = await provider.getSigner();
+
+                    // ABI includes our event so we can read it
+                    const acgcAbi = [
+                      "event NullifierIssued(uint256 nullifier)",
+                      "event UserNameDisclosed(uint256 nullifier,string fullName)"
+                    ];
+
+                    const acgc = new ethers.Contract(CONTRACT_ADDRESS, acgcAbi, signer);
+
+                    // listen once for NullifierIssued after verification
+                    acgc.once("UserNameDisclosed", (nullifier, fullName) => {
+                      console.log("✅ Verified user:", fullName, "nullifier:", nullifier.toString());
+                      localStorage.setItem(nullifier.toString(), fullName);
+                    });
+
+                  } catch (err) {
+                    console.error("⚠️ Failed to fetch nullifier:", err);
+                  }
+                }}
+                onError={(data) => {
+                  console.error("[Self] Verification error:", data);
+                  // If you see ScopeMismatch(), check scope, endpoint (lowercase), and disclosures.
+                }}
+            />
+            <p className="mt-3 text-xs text-white/70">
+              Scan with the Self app to verify on&nbsp;
+              Celo {IS_TESTNET ? "Sepolia" : "mainnet"}.
+            </p>
+          </div>
       ) : null}
     </div>
   );

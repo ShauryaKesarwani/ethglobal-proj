@@ -7,9 +7,6 @@ import {SelfStructs} from "@selfxyz/contracts/contracts/libraries/SelfStructs.so
 import {SelfUtils} from "@selfxyz/contracts/contracts/libraries/SelfUtils.sol";
 import {IIdentityVerificationHubV2} from "@selfxyz/contracts/contracts/interfaces/IIdentityVerificationHubV2.sol";
 
-//import "./SessionManager.sol";
-
-
 contract ACGC is SelfVerificationRoot {
     address public immutable i_owner;
     modifier onlyOwner() { require(msg.sender == i_owner, "not owner"); _; }
@@ -17,16 +14,13 @@ contract ACGC is SelfVerificationRoot {
     SelfStructs.VerificationConfigV2 public verificationConfig;
     bytes32 public verificationConfigId;
 
-//    SessionManager public session;
-
     event NullifierIssued(uint256 nullifier);
     event CheaterFlagged(uint256 nullifier);
     event CheaterUnflagged(uint256 nullifier);
-    event SessionDeployed(address sessionAddress);
-    event SessionAutoOpened(uint256 nullifier, bool ok); // ok=false => session call failed; verification still succeeds
+    event UserNameDisclosed(uint256 nullifier, string fullName);
 
-    // nullifier => banned?
     mapping(uint256 => bool) public isBanned;
+    mapping(uint256 => string) private lastName;  // latest disclosed name by nullifier
 
     constructor(
         address hubV2,
@@ -35,42 +29,45 @@ contract ACGC is SelfVerificationRoot {
     ) SelfVerificationRoot(hubV2, scopeSeed) {
         i_owner = msg.sender;
 
-        // Register verification config with Hub
         verificationConfig = SelfUtils.formatVerificationConfigV2(rawCfg);
         verificationConfigId = IIdentityVerificationHubV2(hubV2).setVerificationConfigV2(verificationConfig);
-
-        // Deploy SessionManager and keep its address
-//        session = new SessionManager(address(this));
-//        emit SessionDeployed(address(session));
     }
 
-    // emit nullifier + auto-open session
+
     function customVerificationHook(
         ISelfVerificationRoot.GenericDiscloseOutputV2 memory output,
-        bytes memory //userdata ignoring fully
+        bytes memory /* userData */
     ) internal override {
         uint256 nullifier = output.nullifier;
 
-        // Emit ONLY the nullifier
+        // output.name is an array: ["FIRST", "MIDDLE", "LAST"] (ordering depends on doc)
+        string memory fullName = _concatName(output.name);
+
+        // persist if you want later reads
+        if (bytes(fullName).length != 0) {
+            lastName[nullifier] = fullName;
+        }
+
         emit NullifierIssued(nullifier);
-
-        // If you want to hard-stop verification for banned nullifiers, uncomment below:
-         require(!isBanned[nullifier], "banned");
-
-        // Auto-open a 3h session; never revert verification if this fails
-//        try session.openSession(nullifier) {
-//            emit SessionAutoOpened(nullifier, true);
-//        } catch {
-//            emit SessionAutoOpened(nullifier, false);
-//        }
+        emit UserNameDisclosed(nullifier, fullName);
     }
 
-    // Hub routing
-    function getConfigId(
-        bytes32,
-        bytes32,
-        bytes memory
-    ) public view override returns (bytes32) {
+// helper to join the array with spaces
+    function _concatName(string[] memory parts) internal pure returns (string memory) {
+        if (parts.length == 0) return "";
+        bytes memory out = bytes(parts[0]);
+        for (uint256 i = 1; i < parts.length; i++) {
+            out = abi.encodePacked(out, " ", parts[i]);
+        }
+        return string(out);
+    }
+
+
+    function _decodeName(bytes calldata data) external pure returns (string memory) {
+        return abi.decode(data, (string));
+    }
+
+    function getConfigId(bytes32, bytes32, bytes memory) public view override returns (bytes32) {
         return verificationConfigId;
     }
 
@@ -78,14 +75,21 @@ contract ACGC is SelfVerificationRoot {
         return verificationConfigId;
     }
 
-    // Admin banlist
     function markCheater(uint256 nullifier) external onlyOwner {
         isBanned[nullifier] = true;
         emit CheaterFlagged(nullifier);
+    }
+
+    function unmarkCheater(uint256 nullifier) external onlyOwner {
+        isBanned[nullifier] = false;
+        emit CheaterUnflagged(nullifier);
     }
 
     function isAllowed(uint256 nullifier) external view returns (bool) {
         return !isBanned[nullifier];
     }
 
+    function nameOf(uint256 nullifier) external view returns (string memory) {
+        return lastName[nullifier];
+    }
 }

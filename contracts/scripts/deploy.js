@@ -21,9 +21,10 @@ async function main() {
     const rawCfgObj = {
         olderThan: 0,
         forbiddenCountries: [],
+        name : true,
         ofacEnabled: false,
     };
-    const rawCfgTuple = [0, [], false];
+    const rawCfgTuple = [0, [], true, false];
 
     // ---------------- ACGC ----------------
     const ACGCFactory = await ethers.getContractFactory("ACGC");
